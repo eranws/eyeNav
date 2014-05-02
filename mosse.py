@@ -26,6 +26,9 @@ import cv2
 from common import draw_str, RectSelector
 import video
 
+from httplib2 import Http
+http = Http()
+
 HIST_SIZE=10
 
 def rnd_warp(a):
@@ -180,20 +183,21 @@ class MOSSE:
                 cv2.putText(vis, 'D: %.2f' % psrdown, (pt[0], pt[1]+100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
 
-                if psrleft > psrright and psrleft>45:
+                if psrleft > psrright and psrleft>psrcenter*1.3:
                     cv2.putText(vis, "LEFT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (2,2,255), 4)
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "left")
 
-                if psrright > psrleft and psrright>45:
+                if psrright > psrleft and psrright>psrcenter*1.3:
                     cv2.putText(vis, "RIGHT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 4)
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "right")
 
-                if psrup > psrdown and psrup>45:
+                if psrup > psrdown and psrup>psrcenter*1.3:
                     cv2.putText(vis, "UP", (pt[0], pt[1]-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (2,255,255), 4)
-
-                if psrdown > psrup and psrdown>45:
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "up")        
+                    
+                if psrdown > psrup and psrdown>psrcenter*1.3:
                     cv2.putText(vis, "DOWN", (pt[0], pt[1]-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,2,255), 4)
-
-
-                
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "down")
 
         else:
             cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 255))
