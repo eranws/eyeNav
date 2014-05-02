@@ -60,6 +60,8 @@ class MOSSE:
         self.std = 999
         self.left = None
         self.right = None
+        self.up = None
+        self.down = None
         
         img = cv2.getRectSubPix(frame, (w, h), (x, y))
 
@@ -132,6 +134,15 @@ class MOSSE:
         print 'save right'
         self.right=self.last_img
         self.right=self.preprocess(self.right)
+    def saveUp(self):
+        print 'save up'
+        self.up=self.last_img
+        self.up=self.preprocess(self.up)
+    def saveDown(self):
+        print 'save down'
+        self.down=self.last_img
+        self.down=self.preprocess(self.down)
+
         
         
     def draw_state(self, vis):
@@ -148,12 +159,16 @@ class MOSSE:
             if self.std < 0.5:
                 cv2.putText(vis, 'FIX', (pt[0], pt[1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
-            if self.left is not None and self.right is not None:
+            if self.left is not None and self.right is not None and self.up is not None and self.down is not None:
                 resp, (ddx, ddy), psrleft = self.correlate(self.left)
                 resp, (ddx, ddy), psrright = self.correlate(self.right)
+                resp, (ddx, ddy), psrup = self.correlate(self.up)
+                resp, (ddx, ddy), psrdown = self.correlate(self.down)
 
                 cv2.putText(vis, 'L: %.2f' % psrleft, (pt[0], pt[1]+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
                 cv2.putText(vis, 'R: %.2f' % psrright, (pt[0], pt[1]+50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+                cv2.putText(vis, 'U: %.2f' % psrup, (pt[0], pt[1]+75), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+                cv2.putText(vis, 'D: %.2f' % psrdown, (pt[0], pt[1]+100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
 
                 if psrleft > psrright and psrleft>45:
@@ -161,6 +176,13 @@ class MOSSE:
 
                 if psrright > psrleft and psrright>45:
                     cv2.putText(vis, "RIGHT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 4)
+
+                if psrup > psrdown and psrup>45:
+                    cv2.putText(vis, "UP", (pt[0], pt[1]-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (2,255,255), 4)
+
+                if psrdown > psrup and psrdown>45:
+                    cv2.putText(vis, "DOWN", (pt[0], pt[1]-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,2,255), 4)
+
 
                 
 
@@ -228,6 +250,7 @@ class App:
                 self.paused = not self.paused
             if ch == ord('c'):
                 self.trackers = []
+
             if ch == ord('a'):
               #save left
               if len(self.trackers) > 0:
@@ -237,6 +260,16 @@ class App:
                 #save right
                 if len(self.trackers) > 0:
                     self.trackers[-1].saveRight()
+
+            if ch == ord('w'):
+                #save right
+                if len(self.trackers) > 0:
+                    self.trackers[-1].saveUp()
+
+            if ch == ord('x'):
+                #save right
+                if len(self.trackers) > 0:
+                    self.trackers[-1].saveDown()
  
                     
 
