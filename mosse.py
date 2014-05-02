@@ -26,6 +26,8 @@ import cv2
 from common import draw_str, RectSelector
 import video
 
+HIST_SIZE=10
+
 def rnd_warp(a):
     h, w = a.shape[:2]
     T = np.zeros((2, 3))
@@ -54,6 +56,11 @@ class MOSSE:
         x1, y1 = (x1+x2-w)//2, (y1+y2-h)//2
         self.pos = x, y = x1+0.5*(w-1), y1+0.5*(h-1)
         self.size = w, h
+        self.posHist = []
+        self.std = 999
+        self.left = None
+        self.right = None
+        
         img = cv2.getRectSubPix(frame, (w, h), (x, y))
 
         self.win = cv2.createHanningWindow((w, h), cv2.CV_32F)
@@ -80,9 +87,21 @@ class MOSSE:
         self.last_resp, (dx, dy), self.psr = self.correlate(img)
         self.good = self.psr > 8.0
         if not self.good:
+            self.posHist=[]
             return
 
         self.pos = x+dx, y+dy
+        self.posHist.append(self.pos)
+
+
+        if len(self.posHist) > HIST_SIZE:
+            self.posHist.pop(0);
+
+            #std
+            an=np.array(self.posHist)
+            s=np.std(an, axis=0)
+            self.std=s[0]+s[1]
+        
         self.last_img = img = cv2.getRectSubPix(frame, (w, h), self.pos)
         img = self.preprocess(img)
 
@@ -105,12 +124,46 @@ class MOSSE:
         vis = np.hstack([self.last_img, kernel, resp])
         return vis
 
+    def saveLeft(self):
+        print 'save left'
+        self.left=self.last_img
+        self.left=self.preprocess(self.left)
+    def saveRight(self):
+        print 'save right'
+        self.right=self.last_img
+        self.right=self.preprocess(self.right)
+        
+        
     def draw_state(self, vis):
         (x, y), (w, h) = self.pos, self.size
         x1, y1, x2, y2 = int(x-0.5*w), int(y-0.5*h), int(x+0.5*w), int(y+0.5*h)
         cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 0, 255))
         if self.good:
-            cv2.circle(vis, (int(x), int(y)), 2, (0, 0, 255), -1)
+            for pos in self.posHist:
+                (xx, yy) = pos
+                pt = (int(xx), int(yy))
+                cv2.circle(vis, pt, 2, (0, 0, 255), -1)
+
+#            cv2.putText(vis, '%.2f' % self.std, pt, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+            if self.std < 0.5:
+                cv2.putText(vis, 'FIX', (pt[0], pt[1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
+            if self.left is not None and self.right is not None:
+                resp, (ddx, ddy), psrleft = self.correlate(self.left)
+                resp, (ddx, ddy), psrright = self.correlate(self.right)
+
+                cv2.putText(vis, 'L: %.2f' % psrleft, (pt[0], pt[1]+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+                cv2.putText(vis, 'R: %.2f' % psrright, (pt[0], pt[1]+50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
+
+                if psrleft > psrright and psrleft>45:
+                    cv2.putText(vis, "LEFT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (2,2,255), 4)
+
+                if psrright > psrleft and psrright>45:
+                    cv2.putText(vis, "RIGHT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 4)
+
+                
+
         else:
             cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 255))
             cv2.line(vis, (x2, y1), (x1, y2), (0, 0, 255))
@@ -175,6 +228,17 @@ class App:
                 self.paused = not self.paused
             if ch == ord('c'):
                 self.trackers = []
+            if ch == ord('a'):
+              #save left
+              if len(self.trackers) > 0:
+                  self.trackers[-1].saveLeft()
+  
+            if ch == ord('d'):
+                #save right
+                if len(self.trackers) > 0:
+                    self.trackers[-1].saveRight()
+ 
+                    
 
 
 if __name__ == '__main__':
