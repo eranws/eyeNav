@@ -95,7 +95,7 @@ class MessageNewHandler(BaseHandler):
 
 class MessageUpdatesHandler(BaseHandler):
     @tornado.web.asynchronous
-    def post(self):
+    def get(self):
         cursor = self.get_argument("cursor", None)
         global_message_buffer.wait_for_messages(self.on_new_messages,
                                                 cursor=cursor)
