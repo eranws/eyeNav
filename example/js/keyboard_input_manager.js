@@ -48,6 +48,15 @@ KeyboardInputManager.prototype.listen = function () {
     83: 2, // S
     65: 3  // A
   };
+  $('body').on("down2048", function(){
+    self.emit("move", 2);
+  }).on("right2048", function(){
+    self.emit("move", 1);
+  }).on("up2048", function(){
+    self.emit("move", 0);
+  }).on("left2048", function(){
+    self.emit("move", 3);
+  });
 
   // Respond to direction keys
   document.addEventListener("keydown", function (event) {
