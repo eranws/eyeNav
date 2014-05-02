@@ -26,6 +26,9 @@ import cv2
 from common import draw_str, RectSelector
 import video
 
+from httplib2 import Http
+http = Http()
+
 HIST_SIZE=10
 
 def rnd_warp(a):
@@ -58,6 +61,8 @@ class MOSSE:
         self.size = w, h
         self.posHist = []
         self.std = 999
+
+        self.center = None
         self.left = None
         self.right = None
         self.up = None
@@ -126,6 +131,11 @@ class MOSSE:
         vis = np.hstack([self.last_img, kernel, resp])
         return vis
 
+
+    def saveCenter(self):
+        print 'save center'
+        self.center=self.last_img
+        self.center=self.preprocess(self.center)
     def saveLeft(self):
         print 'save left'
         self.left=self.last_img
@@ -157,34 +167,37 @@ class MOSSE:
 
 #            cv2.putText(vis, '%.2f' % self.std, pt, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
             if self.std < 0.5:
-                cv2.putText(vis, 'FIX', (pt[0], pt[1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+                cv2.putText(vis, 'FIX', (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
-            if self.left is not None and self.right is not None and self.up is not None and self.down is not None:
+            if self.center is not None and self.left is not None and self.right is not None and self.up is not None and self.down is not None:
                 resp, (ddx, ddy), psrleft = self.correlate(self.left)
                 resp, (ddx, ddy), psrright = self.correlate(self.right)
                 resp, (ddx, ddy), psrup = self.correlate(self.up)
                 resp, (ddx, ddy), psrdown = self.correlate(self.down)
+                resp, (ddx, ddy), psrcenter = self.correlate(self.center)
 
+                cv2.putText(vis, 'C: %.2f' % psrcenter, (pt[0], pt[1]+0), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
                 cv2.putText(vis, 'L: %.2f' % psrleft, (pt[0], pt[1]+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
                 cv2.putText(vis, 'R: %.2f' % psrright, (pt[0], pt[1]+50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
                 cv2.putText(vis, 'U: %.2f' % psrup, (pt[0], pt[1]+75), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
                 cv2.putText(vis, 'D: %.2f' % psrdown, (pt[0], pt[1]+100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
 
 
-                if psrleft > psrright and psrleft>45:
+                if psrleft > psrright and psrleft>psrcenter*1.3:
                     cv2.putText(vis, "LEFT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (2,2,255), 4)
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "left")
 
-                if psrright > psrleft and psrright>45:
+                if psrright > psrleft and psrright>psrcenter*1.3:
                     cv2.putText(vis, "RIGHT", (pt[0], pt[1]-25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 4)
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "right")
 
-                if psrup > psrdown and psrup>45:
+                if psrup > psrdown and psrup>psrcenter*1.3:
                     cv2.putText(vis, "UP", (pt[0], pt[1]-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (2,255,255), 4)
-
-                if psrdown > psrup and psrdown>45:
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "up")        
+                    
+                if psrdown > psrup and psrdown>psrcenter*1.3:
                     cv2.putText(vis, "DOWN", (pt[0], pt[1]-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,2,255), 4)
-
-
-                
+                    resp, content = http.request("http://localhost:8889/a/message/new", "POST", "down")
 
         else:
             cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 255))
@@ -251,24 +264,16 @@ class App:
             if ch == ord('c'):
                 self.trackers = []
 
-            if ch == ord('a'):
-              #save left
-              if len(self.trackers) > 0:
-                  self.trackers[-1].saveLeft()
-  
-            if ch == ord('d'):
-                #save right
-                if len(self.trackers) > 0:
+            if len(self.trackers) > 0:
+                if ch == ord('s'):
+                    self.trackers[-1].saveCenter()
+                if ch == ord('a'):
+                    self.trackers[-1].saveLeft()
+                if ch == ord('d'):
                     self.trackers[-1].saveRight()
-
-            if ch == ord('w'):
-                #save right
-                if len(self.trackers) > 0:
+                if ch == ord('w'):
                     self.trackers[-1].saveUp()
-
-            if ch == ord('x'):
-                #save right
-                if len(self.trackers) > 0:
+                if ch == ord('x'):
                     self.trackers[-1].saveDown()
  
                     
