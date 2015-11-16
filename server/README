@@ -1,0 +1,10 @@
+python packages to install:
+
+httplib2
+tornado
+
+to run websocket server:
+
+python chatdemo.py --port=8889
+
+example how to send event to websocket server is in test_send.py
